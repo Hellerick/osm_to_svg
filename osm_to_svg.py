@@ -1,4 +1,2 @@
-import re
-print('Hi!')
-print('Why it does not work?')
-print('Try this!')
+osm_path = r'C:\Users\User\Dropbox\Job-shared\Conworlding\Opengeofiction\Latania\Latania.osm'
+print(osm_path)
