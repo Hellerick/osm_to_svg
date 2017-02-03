@@ -21,6 +21,12 @@ def mercatorize(coords):
     y = R * log(tan(pi/4 + lat/2))
     return (y/deg, coords[1])
 
+def canvas_from_mercator(coords, bounds):
+    mer, lon = coords
+    x = lon
+    y = bounds['canvas'][1] - (mer-bounds['minmer'])/bounds['merrange']
+
+
 
 def generate_svg_from_osm(osm_path):
     print(f'OSM file path: {osm_path}')
@@ -45,10 +51,10 @@ def generate_svg_from_osm(osm_path):
 
     # Canvas size: width, height
     if bounds['merrange'] > bounds['lonrange']:
-        canvas = (1200.0*bounds['lonrange']/bounds['merrange'], 1200.0)
+        bounds['canvas'] = (1200.0*bounds['lonrange']/bounds['merrange'], 1200.0)
     else:
-        canvas = (1200.0, 1200.0*bounds['merrange']/bounds['lonrange'])
-    print('Canvas:', canvas)
+        bounds['canvas'] = (1200.0, 1200.0*bounds['merrange']/bounds['lonrange'])
+    print('Canvas:', bounds['canvas'])
 
     print()
     print('Content:')
@@ -60,9 +66,13 @@ def generate_svg_from_osm(osm_path):
 
     nodes = root.findall('node')
     nodes = {int(n.attrib['id']):(float(n.attrib['lat']), float(n.attrib['lon'])) for n in nodes}
-    print('Nodes:', nodes)
 
     # mercatorize all nodes
+    nodes = {n:mercatorize(nodes[n]) for n in nodes}
+    print('Nodes:', nodes)
+
+    # canvasize all nodes
+    nodes = {n:canvas_from_mercator(nodes[n], bounds) for n in nodes}
 
 if __name__ == '__main__':
     generate_svg_from_osm(example_osm_path)
