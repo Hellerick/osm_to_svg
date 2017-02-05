@@ -74,7 +74,7 @@ def generate_svg_from_osm(osm_path):
 
     nodes = {int(n.attrib['id']): Node(n, bounds) for n in root.findall('node')}
     for i in range(1, 10):
-        print(f'{i}, lat: {nodes[i].lat:0.6f}, lon: {nodes[i].lon:0.6f}, plot: {nodes[i].x:0.6f} {nodes[i].x:0.6f}')
+        print(f'{i}, lat: {nodes[i].lat:0.6f}, lon: {nodes[i].lon:0.6f}, plot: {nodes[i].x:0.6f} {nodes[i].y:0.6f}')
     # nodes = {int(n.attrib['id']):(float(n.attrib['lat']), float(n.attrib['lon'])) for n in nodes}
 
     # mercatorize all nodes
