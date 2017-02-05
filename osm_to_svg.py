@@ -57,9 +57,9 @@ def generate_svg_from_osm(osm_path):
     root = tree.getroot()
     bounds = Bounds(root)
     print(
-        f'Bounds, lat: {bounds.latmin}..{bounds.latmax} ({bounds.latran}); lon: {bounds.lonmin}..{bounds.lonmax} ({bounds.lonran})')
+        f'Bounds, lat: {bounds.latmin:0.6f}..{bounds.latmax:0.6f} ({bounds.latran:0.6f}); '
+        f'lon: {bounds.lonmin:0.6f}..{bounds.lonmax:0.6f} ({bounds.lonran:0.6f})')
 
-    # Canvas size: width, height
     print('Canvas (width, height):', bounds.canvas)
 
     # """ Visualize the structure """
@@ -74,15 +74,12 @@ def generate_svg_from_osm(osm_path):
 
     nodes = {int(n.attrib['id']): Node(n, bounds) for n in root.findall('node')}
     for i in range(1, 10):
-        print(f'{i}, lat: {nodes[i].lat}, lon: {nodes[i].lon}, plot: {nodes[i].plot}')
+        print(f'{i}, lat: {nodes[i].lat:0.6f}, lon: {nodes[i].lon:0.6f}, plot: {nodes[i].x:0.6f} {nodes[i].x:0.6f}')
     # nodes = {int(n.attrib['id']):(float(n.attrib['lat']), float(n.attrib['lon'])) for n in nodes}
 
     # mercatorize all nodes
     # nodes = {n:mercatorize(nodes[n]) for n in nodes}
     print('Nodes:', nodes)
-
-    # canvasize all nodes
-    # nodes = {n:canvas_from_mercator(nodes[n], bounds) for n in nodes}
 
 
 if __name__ == '__main__':
