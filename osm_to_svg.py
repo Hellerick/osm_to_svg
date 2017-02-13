@@ -13,7 +13,7 @@ example_osm_path = {
     'DESKTOP-62BVD4A': 'd:\KPV\Github\osm_to_svg\Vesunsoy.osm',
     'hellerick-C17A': r'/home/hellerick/PycharmProjects/osm_to_svg/Vesunsoy.osm'}[platform.node()]
 
-# example_osm_path = '/home/hellerick/Dropbox/Job-shared/Conworlding/Opengeofiction/Latania/Latania.osm'
+example_osm_path = 'd:\KPV\Maps\Moscow railroads\overpass-api.de - api - xapi - way bbox=36.7163086,55.0594952,38.0566406,56.1026834 railway=rail.osm'
 
 
 def mercatorize(lat):
@@ -28,7 +28,16 @@ def round3(n):
 
 class Bounds:
     def __init__(self, root):
-        bounds = root.find('bounds').attrib
+        try:
+            bounds = root.find('bounds').attrib
+        except AttributeError:
+            nodes = root.findall('node')
+            bounds = dict(
+                    minlat=min([float(n.attrib['lat']) for n in nodes]),
+                    maxlat=max([float(n.attrib['lat']) for n in nodes]),
+                    minlon=min([float(n.attrib['lon']) for n in nodes]),
+                    maxlon=max([float(n.attrib['lon']) for n in nodes]),
+                )
         self.bounds = bounds
         self.latmin = float(bounds['minlat'])
         self.latmax = float(bounds['maxlat'])
@@ -137,6 +146,9 @@ def generate_svg_from_osm(osm_path):
     #
     #     svg_file.write(ET.tostring(svg_canvas))
 
+# Downloading a certain type
+# http://www.overpass-api.de/api/xapi?way[bbox=36.7163086,55.0594952,38.0566406,56.1026834][railway=rail]
 
 if __name__ == '__main__':
+    download_osm(box=)
     generate_svg_from_osm(example_osm_path)
