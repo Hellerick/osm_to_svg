@@ -164,14 +164,14 @@ def download_osm(bounds, selecttion):
     query = f'way[bbox={bounds.lon_min},{bounds.lat_min},{bounds.lon_max},{bounds.lat_max}]'
     for key in selection:
         query = query + f'[{key}={selection[key]}]'
-    print('Query:', base_url+query)
-    osm_file_name = re.sub(r'(\[|\])+', ' ', query).strip()+'.osm'
-    osm_file_path = os.path.join(project_path, osm_file_name)
-    # osm_file_name = ''.join([c for c in query if c.isalnum() or c in ',.' else ' '])
-    data = requests.get(base_url+query).text
-    with open(osm_file_path, mode='wt') as f:
-        f.write(data)
-    print(f'Saved as: {osm_file_path}')
+        print('Query:', base_url+query)
+        osm_file_name = re.sub(r'(\[|\])+', ' ', query).strip()+'.osm'
+        osm_file_path = os.path.join(project_path, osm_file_name)
+        # osm_file_name = ''.join([c for c in query if c.isalnum() or c in ',.' else ' '])
+        data = requests.get(base_url+query).text
+        with open(osm_file_path, mode='wt', encoding='utf8') as f:
+            f.write(data)
+        print(f'Saved as: {osm_file_path}')
     return osm_file_path
 
 
@@ -180,7 +180,7 @@ if __name__ == '__main__':
     bounds = Bounds(dict(lon_min=35.1435, lon_max=40.2035, lat_min=54.2557, lat_max=56.9611))
     selection = {
         'railway': 'rail',
-        'admin_level': '4',
+        # 'admin_level': '4',
     }
     osm_file_path = download_osm(bounds, selection)
     # generate_svg_from_osm(example_osm_path)
