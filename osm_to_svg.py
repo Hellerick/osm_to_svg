@@ -104,10 +104,10 @@ def generate_svg_from_osm(osm_path, bounds):
                 tree = ET.parse(path)
             else:
                 new_tree = ET.parse(path)
-                new_tree.find('osm')
                 children = [c for c in new_tree._root]
-                tree._root.expand(children)
-            print('Tree length:', len([c for c in tree.iter()]) )
+                for c in children:
+                    tree._root.append(c)
+            print('Tree length:', len([c for c in tree._root]) )
         common_path = re.sub(r'\.osm\Z', '',
                              max([
                                      osm_path[0][0:i] for i in range(len(osm_path[0])+1) if all([osm_path[0][0:i] in p for p in osm_path])
@@ -182,7 +182,7 @@ def generate_svg_from_osm(osm_path, bounds):
 
     # svg_canvas.extend([ET.Element('path', fill='none', stroke='black', d=ways[w].d) for w in ways])
 
-    svg_path = common_path+'.svg'
+    svg_path = common_path.strip()+'.svg'
     print(f'\nWriting SVG at\n{svg_path}')
     ET.ElementTree(svg_canvas).write(svg_path, xml_declaration=True, encoding='utf-8', method='xml')
     # with open(svg_path, mode='wb') as svg_file:
