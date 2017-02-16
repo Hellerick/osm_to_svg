@@ -7,6 +7,7 @@ from math import pi, log, tan
 
 max_image_size = 1200
 deg = pi / 180
+type_keys = {'railway', 'admin_level'}
 
 # https://docs.python.org/3/library/xml.etree.elementtree.html
 
@@ -16,9 +17,9 @@ project_path = {
     'hellerick-C17A': r'/home/hellerick/PycharmProjects/osm_to_svg'}[platform.node()]
 
 
-example_osm_path = os.path.join(project_path, 'esunsoy.osm')
+# example_osm_path = os.path.join(project_path, 'esunsoy.osm')
 
-example_osm_path = 'd:\KPV\Maps\Moscow railroads\overpass-api.de - api - xapi - way bbox=36.7163086,55.0594952,38.0566406,56.1026834 railway=rail.osm'
+# example_osm_path = 'd:\KPV\Maps\Moscow railroads\overpass-api.de - api - xapi - way bbox=36.7163086,55.0594952,38.0566406,56.1026834 railway=rail.osm'
 
 
 def mercatorize(lat):
@@ -84,20 +85,48 @@ class Way:
 
         try:
             # print('Way tag attribs:', way.findall('tag')[0].attrib)
-            way_type = [t for t in way.findall('tag') if not t.attrib['k'] in ('source', 'name')][0]
-            self.type = way_type.attrib['k']+' - '+way_type.attrib['v']
+            attributes = {t.attrib['k']:t.attrib['v'] for t in way.findall('tag')}
+            for key in attributes:
+                if key in type_keys:
+                    self.type = key+' - '+attributes[key]
         except IndexError:
             self.type = 'none'
 
 
-def generate_svg_from_osm(osm_path):
-    print(f'OSM file path: {osm_path}')
-    tree = ET.parse(osm_path)
+def generate_svg_from_osm(osm_path, bounds):
+    print('== SVG file generation ==')
+    print('Argument:', osm_path)
+    if type(osm_path) == list:
+        tree = None
+        for path in osm_path:
+            print(f'Taken OSM: {path}')
+            if tree == None:
+                tree = ET.parse(path)
+            else:
+                new_tree = ET.parse(path)
+                new_tree.find('osm')
+                children = [c for c in new_tree._root]
+                tree._root.expand(children)
+            print('Tree length:', len([c for c in tree.iter()]) )
+        common_path = re.sub(r'\.osm\Z', '',
+                             max([
+                                     osm_path[0][0:i] for i in range(len(osm_path[0])+1) if all([osm_path[0][0:i] in p for p in osm_path])
+                                   ])
+                             )
+    else:
+        print(f'OSM file path: {osm_path}')
+        common_path = re.sub(r'\.osm\Z', '', osm_path)
+        tree = ET.parse(osm_path)
     root = tree.getroot()
-    bounds = Bounds(root)
+    if bounds is None:
+        bounds = Bounds(root)
     print(
-        f'Bounds, lat: {bounds.lat_min:0.6f}..{bounds.lat_max:0.6f} ({bounds.lat_ran:0.6f}); '
-        f'lon: {bounds.lon_min:0.6f}..{bounds.lon_max:0.6f} ({bounds.lon_ran:0.6f})')
+        f'Bounds, '
+        f'lat: {bounds.lat_min:0.6f}..{bounds.lat_max:0.6f} '
+        f'({bounds.lat_ran:0.6f}); '
+        f'lon: {bounds.lon_min:0.6f}..{bounds.lon_max:0.6f} '
+        f'({bounds.lon_ran:0.6f})'
+    )
 
     print('Canvas (width, height):', bounds.canvas)
 
@@ -113,21 +142,26 @@ def generate_svg_from_osm(osm_path):
 
     '''Creating SVG'''
     svg_canvas = ET.Element('svg')
-    ET.register_namespace('inkscape', "http://www.inkscape.org/namespaces/inkscape")
+    ET.register_namespace(
+        'inkscape', "http://www.inkscape.org/namespaces/inkscape")
     svg_canvas.set('xmlns', 'http://www.w3.org/2000/svg')
-    svg_canvas.set('xmlns:inkscape', 'http://www.inkscape.org/namespaces/inkscape')
+    svg_canvas.set(
+        'xmlns:inkscape', 'http://www.inkscape.org/namespaces/inkscape')
     svg_canvas.set('version', '1.1')
     svg_canvas.set('width', str(round3(bounds.canvas[0])))
     svg_canvas.set('height', str(round3(bounds.canvas[1])))
 
-    nodes = {int(n.attrib['id']): Node(n, bounds) for n in root.findall('node')}
+    nodes = {
+        int(n.attrib['id']): Node(n, bounds)
+        for n in root.findall('node')
+        }
     # for i in range(1, 10):
     #     print(f'{i}, lat: {nodes[i].lat:0.6f}, lon: {nodes[i].lon:0.6f}, plot: {nodes[i].x:0.6f} {nodes[i].y:0.6f}')
     # nodes = {int(n.attrib['id']):(float(n.attrib['lat']), float(n.attrib['lon'])) for n in nodes}
 
     # mercatorize all nodes
     # nodes = {n:mercatorize(nodes[n]) for n in nodes}
-    print('Nodes:', nodes)
+    # print('Nodes:', nodes)
 
     ways = {int(w.attrib['id']): Way(w, nodes) for w in root.findall('way')}
 
@@ -148,39 +182,46 @@ def generate_svg_from_osm(osm_path):
 
     # svg_canvas.extend([ET.Element('path', fill='none', stroke='black', d=ways[w].d) for w in ways])
 
-    svg_path = osm_path+'.svg'
+    svg_path = common_path+'.svg'
     print(f'\nWriting SVG at\n{svg_path}')
     ET.ElementTree(svg_canvas).write(svg_path, xml_declaration=True, encoding='utf-8', method='xml')
     # with open(svg_path, mode='wb') as svg_file:
     #
     #     svg_file.write(ET.tostring(svg_canvas))
 
-# Downloading a certain type
-# http://www.overpass-api.de/api/xapi?way[bbox=36.7163086,55.0594952,38.0566406,56.1026834][railway=rail]
 
-def download_osm(bounds, selecttion):
+def download_osm(bounds, selection):
+    # Downloading a certain type
+    # http://www.overpass-api.de/api/xapi?way[bbox=36.7163086,55.0594952,38.0566406,56.1026834][railway=rail]
     print('== Download OSM data ==')
     base_url = 'http://www.overpass-api.de/api/xapi?'
-    query = f'way[bbox={bounds.lon_min},{bounds.lat_min},{bounds.lon_max},{bounds.lat_max}]'
+    osm_file_paths = []
     for key in selection:
-        query = query + f'[{key}={selection[key]}]'
-        print('Query:', base_url+query)
+        query = (
+            f'way[bbox={bounds.lon_min},{bounds.lat_min},'
+            f'{bounds.lon_max},{bounds.lat_max}]'
+            f'[{key}={selection[key]}]'
+            )
+        print(f'Query: {base_url+query}\n')
         osm_file_name = re.sub(r'(\[|\])+', ' ', query).strip()+'.osm'
         osm_file_path = os.path.join(project_path, osm_file_name)
-        # osm_file_name = ''.join([c for c in query if c.isalnum() or c in ',.' else ' '])
-        data = requests.get(base_url+query).text
-        with open(osm_file_path, mode='wt', encoding='utf8') as f:
-            f.write(data)
-        print(f'Saved as: {osm_file_path}')
-    return osm_file_path
-
+        if os.path.exists(osm_file_path):
+            print(f'The file at this path already exists and does not have to be downloaded:\n'
+                  f'{osm_file_path}\n')
+        else:
+            data = requests.get(base_url+query).text
+            with open(osm_file_path, mode='wt', encoding='utf8') as f:
+                f.write(data)
+            print(f'The data downloaded and saved at:\n {osm_file_path}\n')
+        osm_file_paths = osm_file_paths+[osm_file_path]
+    return osm_file_paths
 
 
 if __name__ == '__main__':
     bounds = Bounds(dict(lon_min=35.1435, lon_max=40.2035, lat_min=54.2557, lat_max=56.9611))
     selection = {
         'railway': 'rail',
-        # 'admin_level': '4',
+        'admin_level': '4',
     }
-    osm_file_path = download_osm(bounds, selection)
-    # generate_svg_from_osm(example_osm_path)
+    osm_file_paths = download_osm(bounds, selection)
+    generate_svg_from_osm(osm_file_paths, bounds)
