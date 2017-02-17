@@ -9,10 +9,11 @@ max_image_size = 1200
 deg = pi / 180
 type_keys = {'railway', 'admin_level'}
 
+# http://www.december.com/html/spec/colorsvg.html
 stroke_colors = {
-    'railway=rail': 'gray',
-    'admin_level=4': 'red',
-    'admin_level=5': 'orange',
+    'railway=rail'  : 'dimgray',
+    'admin_level=4' : 'red',
+    'admin_level=5' : 'orange',
 }
 
 # https://docs.python.org/3/library/xml.etree.elementtree.html
@@ -52,11 +53,11 @@ class Bounds:
             except AttributeError:
                 nodes = root.findall('node')
                 arg_bounds = dict(
-                        lat_min=min([float(n.attrib['lat']) for n in nodes]),
-                        lat_max=max([float(n.attrib['lat']) for n in nodes]),
-                        lon_min=min([float(n.attrib['lon']) for n in nodes]),
-                        lon_max=max([float(n.attrib['lon']) for n in nodes]),
-                    )
+                    lat_min=min([float(n.attrib['lat']) for n in nodes]),
+                    lat_max=max([float(n.attrib['lat']) for n in nodes]),
+                    lon_min=min([float(n.attrib['lon']) for n in nodes]),
+                    lon_max=max([float(n.attrib['lon']) for n in nodes]),
+                )
         self.bounds = arg_bounds
         self.lat_min = float(arg_bounds['lat_min'])
         self.lat_max = float(arg_bounds['lat_max'])
@@ -94,7 +95,6 @@ class Way:
         self.nd = [nodes[int(n.attrib['ref'])] for n in way.findall('nd')]
         self.d = "M " + ' L '.join(f'{round3(n.x)} {round3(n.y)}'
                                    for n in self.nd)
-
         try:
             # print('Way tag attribs:', way.findall('tag')[0].attrib)
             attributes = {t.attrib['k']: t.attrib['v']
@@ -170,7 +170,7 @@ def generate_svg_from_osm(osm_path, arg_bounds):
     nodes = {
         int(n.attrib['id']): Node(n, arg_bounds)
         for n in root.findall('node')
-        }
+    }
 
     ways = {int(w.attrib['id']): Way(w, nodes) for w in root.findall('way')}
 
@@ -181,17 +181,15 @@ def generate_svg_from_osm(osm_path, arg_bounds):
         group.set('id', re.sub(' ', '_', l))
         group.set('inkscape:label', l)
         group.set('inkscape:groupmode', 'layer')
-        group.extend(
-            (
-                ET.Element(
-                    'path',
-                    fill='none',
-                    stroke=stroke_colors.get(l, 'black'),
-                    d=ways[w].d
-                )
-                for w in ways if ways[w].type == l
+        group.extend((
+            ET.Element(
+                'path',
+                fill='none',
+                stroke=stroke_colors.get(l, 'black'),
+                d=ways[w].d
             )
-        )
+            for w in ways if ways[w].type == l
+        ))
         svg_canvas.extend([group])
 
     svg_path = common_path.strip()+'.svg'
@@ -230,13 +228,16 @@ def download_osm(arg_bounds, arg_selection):
 
 
 if __name__ == '__main__':
+
     bounds = Bounds(dict(
         lon_min=35.1435, lon_max=40.2035, lat_min=54.2557, lat_max=56.9611
     ))
+
     selection = {
         'railway=rail',
         'admin_level=4',
         'admin_level=5',
     }
+
     osm_file_paths = download_osm(bounds, selection)
     generate_svg_from_osm(osm_file_paths, bounds)
