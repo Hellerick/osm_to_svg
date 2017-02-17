@@ -225,12 +225,14 @@ def download_osm(arg_bounds, arg_selection):
             with open(osm_file_path, mode='wt', encoding='utf8') as f:
                 f.write(data)
             print(f'The data downloaded and saved at:\n {osm_file_path}\n')
-        osm_file_paths = osm_file_paths+[osm_file_path]
+        osm_file_paths += [osm_file_path]
     return osm_file_paths
 
 
 if __name__ == '__main__':
-    bounds = Bounds(dict(lon_min=35.1435, lon_max=40.2035, lat_min=54.2557, lat_max=56.9611))
+    bounds = Bounds(dict(
+        lon_min=35.1435, lon_max=40.2035, lat_min=54.2557, lat_max=56.9611
+    ))
     selection = {
         'railway=rail',
         'admin_level=4',
