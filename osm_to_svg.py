@@ -3,7 +3,7 @@ import os
 import platform
 import re
 import requests
-from math import pi, log, tan
+from math import pi, log, tan, cos
 
 max_image_size = 1200
 deg = pi / 180
@@ -32,18 +32,29 @@ project_path = {
 #                    '56.1026834 railway=rail.osm'
 
 
-def mercatorize(lat):
-    lat *= deg
-    y = log(tan(pi / 4 + lat / 2))
-    return y / deg
+# def mercatorize(lat):
+#     lat *= deg
+#     y = log(tan(pi / 4 + lat / 2))
+#     return y / deg
+
+
+def project(lat, lon, bounds):
+    if bounds.projection == 'M':
+        lat = log(tan(pi / 4 + lat*deg / 2)) / deg
+    elif bounds.projection == 'R':
+        lat0 = (bounds.lat_max + bounds.lat_min)/2
+        lon = lon * cos(lat0*deg)
+    return [lat, lon]
 
 
 def round3(n):
     return round(n*1000)/1000
 
-
 class Bounds:
-    def __init__(self, arg):
+    def __init__(self, arg, projection='M'):
+        # projection:
+        # 'M': Mercator (conformal cylindrical projection)
+        # 'R': Rectangular (equidistant cylindrical projection)
         if type(arg) == dict:
             arg_bounds = arg
         else:
@@ -59,21 +70,23 @@ class Bounds:
                     lon_max=max([float(n.attrib['lon']) for n in nodes]),
                 )
         self.bounds = arg_bounds
+        self.projection = projection
         self.lat_min = float(arg_bounds['lat_min'])
         self.lat_max = float(arg_bounds['lat_max'])
-        if self.lat_max < self.lat_min:
-            self.lat_max += 360.0
         self.lon_min = float(arg_bounds['lon_min'])
         self.lon_max = float(arg_bounds['lon_max'])
-        self.mer_max = mercatorize(self.lat_max)
-        self.mer_min = mercatorize(self.lat_min)
+        if self.lat_max < self.lat_min:
+            self.lat_max += 360.0
+        self.lat_pro_max, self.lon_pro_max = project(self.lat_max, self.lon_max, self)
+        self.lat_pro_min, self.lon_pro_min = project(self.lat_min, self.lon_min, self)
         self.lon_ran = self.lon_max - self.lon_min
         self.lat_ran = self.lat_max - self.lat_min
-        self.mer_ran = self.mer_max - self.mer_min
-        if self.mer_ran > self.lon_ran:
-            self.canvas = (1200.0 * self.lon_ran / self.mer_ran, 1200.0)
+        self.lat_pro_ran = self.lat_pro_max - self.lat_pro_min
+        self.lon_pro_ran = self.lon_pro_max - self.lon_pro_min
+        if self.lat_pro_ran > self.lon_pro_ran:
+            self.canvas = (1200.0 * self.lon_pro_ran / self.lat_pro_ran, 1200.0)
         else:
-            self.canvas = (1200.0, 1200.0 * self.mer_ran / self.lon_ran)
+            self.canvas = (1200.0, 1200.0 * self.lat_pro_ran / self.lon_pro_ran)
 
 
 class Node:
@@ -81,11 +94,11 @@ class Node:
         self.id = int(node.attrib['id'])
         self.lat = float(node.attrib['lat'])
         self.lon = float(node.attrib['lon'])
-        self.mer = mercatorize(self.lat)
-        self.x = ((self.lon - arg_bounds.lon_min) / arg_bounds.lon_ran *
+        self.lat_pro, self.lon_pro = project(self.lat, self.lon, bounds)
+        self.x = ((self.lon_pro - arg_bounds.lon_pro_min) / arg_bounds.lon_pro_ran *
                   arg_bounds.canvas[0])
-        self.y = (arg_bounds.canvas[1] - (self.mer - arg_bounds.mer_min) /
-                  arg_bounds.mer_ran * arg_bounds.canvas[1])
+        self.y = (arg_bounds.canvas[1] - (self.lat_pro - arg_bounds.lat_pro_min) /
+                  arg_bounds.lat_pro_ran * arg_bounds.canvas[1])
         self.plot = (self.x, self.y)
 
 
@@ -106,7 +119,7 @@ class Way:
             self.type = 'none'
 
 
-def generate_svg_from_osm(osm_path, arg_bounds):
+def generate_svg_from_osm(osm_path, arg_bounds, projection="M"):
     print('== SVG file generation ==')
     print('Argument:', osm_path)
     if type(osm_path) == list:
@@ -208,7 +221,7 @@ def download_osm(arg_bounds, arg_selection):
             f'way[bbox={arg_bounds.lon_min},{arg_bounds.lat_min},'
             f'{arg_bounds.lon_max},{arg_bounds.lat_max}]'
             f'[{tag}]'
-            )
+        )
         print(f'Query: {base_url+query}\n')
         osm_file_name = re.sub(r'(\[|\])+', ' ', query).strip()+'.osm'
         osm_file_path = os.path.join(project_path, osm_file_name)
@@ -229,9 +242,15 @@ def download_osm(arg_bounds, arg_selection):
 
 if __name__ == '__main__':
 
-    bounds = Bounds(dict(
-        lon_min=35.1435, lon_max=40.2035, lat_min=54.2557, lat_max=56.9611
-    ))
+    bounds = Bounds(
+        dict(
+            lon_min=35.1435,
+            lon_max=40.2035,
+            lat_min=54.2557,
+            lat_max=56.9611
+        ),
+        projection="M"
+    )
 
     selection = {
         'railway=rail',
