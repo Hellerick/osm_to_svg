@@ -249,7 +249,7 @@ if __name__ == '__main__':
             lat_min=54.2557,
             lat_max=56.9611
         ),
-        projection="M"
+        projection="R"
     )
 
     selection = {
